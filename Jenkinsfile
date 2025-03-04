@@ -6,11 +6,11 @@ pipeline {
     options {
         disableConcurrentBuilds()
         timeout(time: 30, unit: 'MINUTES')
-        ansicolor('xterm')
+        ansiColor('xterm')
     }
     environment {
         def appVersion = '' // declaring variable
-        nexus_url = 'http://nexus.hellandhaven.xyz:8081/'
+        nexus_url = 'nexus.hellandhaven.xyz:8081/'
     }
     stages{
         stage('Sample test'){
@@ -22,10 +22,10 @@ pipeline {
                 // ls -ltr is just to see all files successfully taken from git
             }
         }
-        stage('Sample test'){
+        stage('appVersion'){
             steps{
                 script{
-                    def appVersion = readJSON file: 'package.json'
+                    def packageJson = readJSON file: 'package.json'
                     appVersion = packageJson.version
                     echo "application version ${appVersion}"
                 }
@@ -39,42 +39,61 @@ pipeline {
                 // working Agent should have Zip. -x is for exclude
             }
         }
-
+//         stage('Sonar scan') {
+//             environment {
+//                 scannerHome = tool 'sonar-6.0' //referering scanner cli
+//             }
+//             steps {
+//                 script {
+//                     withSonarQubeEnv('sonar-6.0') { //refering scanner server
+//                         sh "${scannerHome}/bin/sonar-scanner" 
+//                     }
+//                 }
+//             }
+//         }
+//         stage("Quality Gate") { //need to configure the webhook in sonarqube to get update from sonar server -- sonar - administration - configure - webhook - http://jenkins.hellandhaven.xyz:8080/github-webhook/
+//             steps {
+//               timeout(time: 30, unit: 'MINUTES') {
+//                 waitForQualityGate abortPipeline: true //if quality gate fails pipeline aborts 
+//               }
+//             }
+//         }
         stage('upload artifact to nexus') {
             steps{
                 script{
-                    nexusArtifactUploader {
-                    nexusVersion: 'nexus3',
-                    protocol: 'http',
-                    nexusUrl: "${nexus_url}",
-                    groupId: 'com.expense',
-                    version: "${appVersion}",
-                    repository: 'frontend',
-                    credentialsId: 'nexus_auth', // manage jenkins - credentials - system - global cred 
-                    artifact: [
-                        artifactId: 'frontend',
-                        type: 'zip',
-                        classifier: '',
-                        file: "frontend-" + "${appVersion}" + '.zip',
+                    nexusArtifactUploader(
+                        nexusVersion: 'nexus3',
+                        protocol: 'http',
+                        nexusUrl: "${nexus_url}",
+                        groupId: 'com.expense',
+                        version: "${appVersion}",
+                        repository: 'frontend',
+                        credentialsId: 'nexus_auth',
+                        artifacts: [
+                            [artifactId: 'frontend' ,
+                            classifier: '',
+                            file: 'frontend-' + "${appVersion}" + '.zip',
+                            type: 'zip']
                         ]
-                    }
+                    )
                 }
             }
         }
-        stage('trigger deploy') {
-            steps{
-                script{
-                    build job: 'frontend-deploy', propagate: false, wait: false,
-                                parameters: [
-                                   string(name: "appVersion", value: "${appVersion}"),
-                                ]
-                }
-            }
-        }
+
+//         stage('trigger deploy') {
+//             steps{
+//                 script{
+//                     build job: 'frontend-deploy', propagate: false, wait: false,
+//                                 parameters: [
+//                                    string(name: "appVersion", value: "${appVersion}"),
+//                                 ]
+//                 }
+//             }
+//         }
     }
     post { 
         always { 
-            echo 'I will always say Hello again!'
+            echo 'i am deleting the workspace'
             deleteDir() // this will delete workspace in agent 
         }
         failure {

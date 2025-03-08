@@ -32,6 +32,20 @@ spec:
           limits:
             cpu: "100m"
             memory: "128Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          failureThreshold: 2
+          periodSeconds: 5
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          failureThreshold: 2
+          periodSeconds: 5
+          initialDelaySeconds: 30
         volumeMounts:
         - name: nginx-config
           mountPath: /etc/nginx/nginx.conf
@@ -44,23 +58,3 @@ spec:
           items:
           - key: nginx.conf
             path: nginx.conf
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: frontend
-  labels:
-    project: expense
-    tier: web
-    component: frontend
-  namespace: expense
-spec:
-  type: LoadBalancer #this will create a load balancer service and this will only work on cloud provider
-  selector:
-    project: expense
-    tier: web
-    component: frontend
-  ports:
-  - port: 80 #port on which service will be exposed
-    targetPort: {{ .Values.configmap.port }} #port on which pod is running

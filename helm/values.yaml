@@ -1,0 +1,5 @@
+namespace: expense
+Deployment:
+  imageVersion: v1.0
+configmap:
+  port: 8080
